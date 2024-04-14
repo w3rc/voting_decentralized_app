@@ -8,7 +8,7 @@ all: clean remove install update build
 clean  :; forge clean
 
 # Remove modules
-remove :; rm -rf .gitmodules && rm -rf .git/modules/* && rm -rf lib && rm -rf client && rm -rf discord_bot && touch .gitmodules && git add . && git commit -m "modules"
+remove :; rm -rf .gitmodules && rm -rf .git/modules/* && rm -rf lib && rm -rf client && rm -rf discord_bot && touch .gitmodules
 
 install :
 	forge install Cyfrin/foundry-devops@0.0.11 --no-commit 
