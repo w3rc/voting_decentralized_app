@@ -10,7 +10,11 @@ clean  :; forge clean
 # Remove modules
 remove :; rm -rf .gitmodules && rm -rf .git/modules/* && rm -rf lib && rm -rf client && rm -rf discord_bot && touch .gitmodules && git add . && git commit -m "modules"
 
-install :; forge install Cyfrin/foundry-devops@0.0.11 --no-commit && forge install foundry-rs/forge-std@v1.5.3 --no-commit && forge install OpenZeppelin/openzeppelin-contracts --no-commit && git submodule add https://github.com/w3rc/voting_dapp_discord_bot.git discord_bot && git submodule add https://github.com/w3rc/voting_dapp.git client 
+install :; forge install Cyfrin/foundry-devops@0.0.11 --no-commit && forge install foundry-rs/forge-std@v1.5.3 --no-commit && forge install OpenZeppelin/openzeppelin-contracts --no-commit && setup-client && setup-discord-bot
+
+setup-client:;  git submodule add https://github.com/w3rc/voting_dapp.git client && cd client && yarn install && cp .env.sample .env && cd ..
+
+setup-discord-bot:; git submodule add https://github.com/w3rc/voting_dapp_discord_bot.git discord_bot && cd discord_bot && yarn install && cp .env.sample .env && cd ..
 
 # Update Dependencies
 update:; forge update
