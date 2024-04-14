@@ -9,13 +9,12 @@ let abi;
 const main = async () => {
     abi = JSON.parse(fs.readFileSync('abi/Voting.json', 'utf8'));
 
-    const client = await environmentSetup();
+    const client = environmentSetup();
 
     let electionCreatedTopicId, candidateAddedTopicId, votedTopicId, electionEndedTopicId;
 
 
     // Create Election Created Topic
-
     if (process.env.ELECTION_CREATED_TOPIC_ID !== undefined) {
         electionCreatedTopicId = process.env.ELECTION_CREATED_TOPIC_ID;
     } else {

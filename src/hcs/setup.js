@@ -1,4 +1,4 @@
-import { Client, PrivateKey, AccountCreateTransaction, AccountBalanceQuery, Hbar, TransferTransaction, TopicCreateTransaction } from "@hashgraph/sdk";
+import { Client, Hbar } from "@hashgraph/sdk";
 import 'dotenv/config'
 
 export const environmentSetup = () => {
