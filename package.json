@@ -1,0 +1,19 @@
+{
+  "name": "voting_system",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/w3rc/voting_system",
+  "type": "module",
+  "author": "w3rc <rupayanc16@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "start": "node src/hcs/index.js"
+  },
+  "dependencies": {
+    "@hashgraph/sdk": "^2.43.0",
+    "axios": "^1.6.8",
+    "dotenv": "^16.4.5",
+    "ethereum-event-processor": "^5.1.2",
+    "web3": "^4.7.0"
+  }
+}
