@@ -1,24 +1,82 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { ThemeProvider } from './components/theme-provider'
 import { Button } from './components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './components/ui/card'
-import { cn } from "@/lib/utils"
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog'
 import { Label } from './components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select'
 import { Input } from './components/ui/input'
 import { Textarea } from './components/ui/textarea'
-import { format } from 'date-fns';
-import { AllWalletsProvider } from './services/wallets/AllWalletsProvider'
 import { useWalletInterface } from './services/wallets/useWalletInterface';
 import { WalletSelectionDialog } from './components/WalletSelectionDialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuTrigger } from './components/ui/dropdown-menu'
+import { getCandidates, getElections, getEndedElections, getOngoingElections } from './services/topic/getMessages'
+import { ContractFunctionParameterBuilder } from './services/wallets/contractFunctionParameterBuilder'
+import { ContractId } from '@hashgraph/sdk'
+import OngoingElectionsCard from './components/OngoingElectionsCard'
+import PastElectionsCard from './components/PastElectionsCard'
+
+interface Candidate {
+    electionId: number;
+    candidates: any[];
+}
 
 function Home() {
     const [open, setOpen] = useState(false);
     const { accountId, walletInterface } = useWalletInterface();
-    const [onGoingElectionsCount, setOnGoingElectionsCount] = useState(1)
-    const [pastElectionsCount, setPastElectionsCount] = useState(2)
+    const [electionName, setElectionName] = useState('')
+    const [electionCandidates, setElectionCandidates] = useState('')
+    const [pastElections, setPastElections] = useState([]);
+    const [ongoingElections, setOngoingElections] = useState([]);
+    const [candidates, setCandidates] = useState<Candidate[]>([]);
+    const [addElectionDialogOpen, setAddElectionDialogOpen] = useState(false);
+    const [fetchingOngoingElections, setFetchingOngoingElections] = useState(true);
+    const [fetchingPastElections, setFetchingPastElections] = useState(true);
+    const [addingElection, setAddingElection] = useState(false);
+
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            getEndedElections().then((elections) => {
+                if (elections.length) {
+                    const uniqueElections = elections.filter((election: { electionId: any }, index: any, self: any[]) =>
+                        index === self.findIndex((e) => (
+                            e.electionId === election.electionId
+                        ))
+                    );
+                    setPastElections(uniqueElections);
+                    setFetchingPastElections(false);
+                }
+            });
+            getOngoingElections().then((elections) => {
+                if (elections.length) {
+                    const uniqueElections = elections.filter((election: { electionId: any }, index: any, self: any[]) =>
+                        index === self.findIndex((e) => (
+                            e.electionId === election.electionId
+                        ))
+                    );
+                    setOngoingElections(uniqueElections);
+                    setFetchingOngoingElections(false);
+                }
+            });
+            getElections().then(async (elections) => {
+                if (elections.length > 0) {
+                    elections.forEach(async (election: any) => {
+                        const candidatesByElectionId = await getCandidates(election.electionId);
+                        setCandidates((prev: any) => {
+                            if (!prev.some((item: any) => item.electionId === election.electionId)) {
+                                return [...prev, { electionId: election.electionId, candidates: candidatesByElectionId }];
+                            }
+                            return prev;
+                        });
+                    });
+                }
+            });
+        }, 3000);
+
+        return () => clearInterval(intervalId);
+    }, []);
+
+    useEffect(() => {
+        console.log(candidates);
+    }, [candidates])
 
     const handleConnect = async () => {
         if (accountId) {
@@ -38,12 +96,22 @@ function Home() {
 
     return (
         <>
-            <div className='flex mt-5 px-10 justify-between'>
+            <div className='flex mt-5 px-10 justify-center relative'>
                 <div />
                 <div className='text-2xl'>Voting DApp</div>
-                <Button onClick={handleConnect}>
-                    {accountId ? `Connected: ${accountId}` : 'Connect Wallet'}
-                </Button>
+                <div onClick={handleConnect} className='border-white border-2 px-4 py-2 absolute right-10'>
+                    {accountId ? <DropdownMenu>
+                        <DropdownMenuTrigger>{`Connected: ${accountId}`}</DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuLabel>
+                                <Button onClick={() => {
+                                    walletInterface?.disconnect();
+                                }}>Disconnect</Button>
+                            </DropdownMenuLabel>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                        : 'Connect Wallet'}
+                </div>
             </div>
 
             <WalletSelectionDialog open={open} onClose={() => setOpen(false)} />
@@ -51,10 +119,10 @@ function Home() {
 
             <div className='px-10 mt-10'>
                 <div className='flex justify-between items-center'>
-                    <div className='text-2xl'>Ongoing Elections: {onGoingElectionsCount}</div>
-                    <Dialog>
+                    <div className='text-2xl'>Ongoing Elections: {ongoingElections.length}</div>
+                    <Dialog open={addElectionDialogOpen} onOpenChange={setAddElectionDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button variant="outline">Add Election</Button>
+                            <Button>Add Election</Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[425px]">
                             <DialogHeader>
@@ -68,118 +136,87 @@ function Home() {
                                     <Label htmlFor="name" className="text-left">
                                         Name
                                     </Label>
-                                    <Input id="name" value="" onChange={() => { }} className="col-span-3" />
+                                    <Input id="name" value={electionName} onChange={(e: any) => setElectionName(e.target.value)} className="col-span-3" />
                                 </div>
                                 <div className="grid w-full gap-4">
                                     <Label htmlFor="candidates" className="text-left">
                                         Candidates
                                     </Label>
-                                    <Textarea id="candidates" value="" onChange={() => { }} className="col-span-3" />
+                                    <Textarea id="candidates" value={electionCandidates} onChange={(e) => setElectionCandidates(e.target.value)} className="col-span-3" />
                                     <p className="text-sm text-muted-foreground">
                                         Add candidates seperated by comma
                                     </p>
                                 </div>
                             </div>
                             <DialogFooter>
-                                <DialogClose asChild>
-                                    <Button type="submit">Save changes</Button>
-                                </DialogClose>
+                                <Button onClick={() => {
+                                    setAddingElection(true);
+                                    if (electionCandidates.trim() === '') {
+                                        console.error('No candidates provided');
+                                        return;
+                                    }
+                                    const candidatesArray = electionCandidates.split(',').map(candidate => `'${candidate.trim()}'`);
+                                    if (!candidatesArray.length) {
+                                        console.error('No candidates provided');
+                                        return;
+                                    }
+                                    walletInterface?.executeContractFunction(ContractId.fromString(import.meta.env.VITE_CONTRACT_ID), 'createElection', new ContractFunctionParameterBuilder().addParam({ type: 'string', name: '_name', value: electionName }), 1750000).then((result) => {
+                                        console.log("Contract Executed", result);
+
+                                        const promises = candidatesArray.map(candidate => {
+                                            return walletInterface?.executeContractFunction(ContractId.fromString(import.meta.env.VITE_CONTRACT_ID), 'addCandidateByElectionName', new ContractFunctionParameterBuilder().addParam({ type: 'string', name: '_electionName', value: electionName }).addParam({ type: 'string', name: '_candidateName', value: candidate }), 1750000);
+                                        });
+
+                                        Promise.all(promises)
+                                            .then((results) => {
+                                                console.log("All contracts executed", results);
+                                                setAddElectionDialogOpen(false);
+                                                setAddingElection(false);
+                                            })
+                                            .catch((error) => {
+                                                console.error("Error executing contracts", error);
+                                                setAddingElection(false);
+                                            });
+
+                                        // candidatesArray.forEach(candidate => {
+                                        //     console.log(candidate)
+                                        //     walletInterface?.executeContractFunction(ContractId.fromString(import.meta.env.VITE_CONTRACT_ID), 'addCandidateByElectionName', new ContractFunctionParameterBuilder().addParam({ type: 'string', name: '_electionName', value: electionName }).addParam({ type: 'string', name: '_candidateName', value: candidate }), 1750000).then((result) => {
+                                        //         console.log("Contract Executed", result);
+                                        //         setAddElectionDialogOpen(false);
+                                        //     }).catch((error) => {
+                                        //         console.error("Error Executing Contract", error);
+                                        //     })
+                                        // })
+                                    }).catch((error) => {
+                                        console.error("Error Executing Contract", error);
+                                    })
+                                }}>
+                                    {addingElection ? "Loading..." : "Save changes"}
+                                </Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
                 </div>
-                <div className='flex mt-5'>
-                    <Card className={cn("w-[380px]")}>
-                        <CardHeader>
-                            <CardTitle>Election 1</CardTitle>
-                            <CardDescription>Results on {format(new Date(), 'PPpp')}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <p>Candidates</p>
-                            <ul className="list-disc list-inside mt-4">
-                                <li>Item 1</li>
-                                <li>Item 2</li>
-                                <li>Item 3</li>
-                            </ul>
-                        </CardContent>
-                        <CardFooter>
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <Button variant="outline">Vote</Button>
-                                </DialogTrigger>
-                                <DialogContent className="sm:max-w-[425px]">
-                                    <DialogHeader>
-                                        <DialogTitle>Cast your Vote</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="grid gap-4 py-4">
-                                        <div className="grid w-full gap-4">
-                                            <Label htmlFor="name" className="text-left">
-                                                Name
-                                            </Label>
-                                            <Select>
-                                                <SelectTrigger className="w-full">
-                                                    <SelectValue placeholder="Candidate" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="light">Candidate 1</SelectItem>
-                                                    <SelectItem value="dark">Candidate 2</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                    <DialogFooter>
-                                        <DialogClose asChild>
-                                            <Button type="submit">Save changes</Button>
-                                        </DialogClose>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
-
-                        </CardFooter>
-                    </Card>
+                <div className="flex flex-wrap justify-start items-stretch gap-10 mt-10">
+                    {fetchingOngoingElections && <div className='mt-10 flex justify-center w-[100%] text-xl'>Fetching ongoing elections...</div>}
+                    {!fetchingOngoingElections && (ongoingElections.length > 0 ? ongoingElections.map((election: any) => {
+                        return <OngoingElectionsCard key={election.electionId} election={election} candidates={candidates} walletInterface={walletInterface} />
+                    }) : <div className='mt-10 flex justify-center w-[100%] text-xl'>No ongoing elections</div>)
+                    }
                 </div>
             </div>
 
             <div className='px-10 mt-10'>
                 <div className='flex justify-between items-center'>
-                    <div className='text-2xl'>Past Elections: {pastElectionsCount}</div>
+                    <div className='text-2xl'>Past Elections: {pastElections.length}</div>
                 </div>
-                <div className='flex mt-5 gap-10'>
-                    <Card className={cn("w-[380px]")}>
-                        <CardHeader>
-                            <CardTitle>Election 1</CardTitle>
-                            <CardDescription>Results announced on {format(new Date(), 'PPpp')}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <p>Candidates</p>
-                            <ul className="list-disc list-inside mt-4">
-                                <li>Item 1</li>
-                                <li>Item 2</li>
-                                <li>Item 3</li>
-                            </ul>
-                        </CardContent>
-                        <CardFooter className='flex justify-center'>
-                            <div className='flex items-center'>Winner: <div className='font-bold ml-2'>Candidate 1</div></div>
-                        </CardFooter>
-                    </Card>
-                    <Card className={cn("w-[380px]")}>
-                        <CardHeader>
-                            <CardTitle>Election 1</CardTitle>
-                            <CardDescription>Results announced on {format(new Date(), 'PPpp')}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <p>Candidates</p>
-                            <ul className="list-disc list-inside mt-4">
-                                <li>Item 1</li>
-                                <li>Item 2</li>
-                                <li>Item 3</li>
-                            </ul>
-                        </CardContent>
-                        <CardFooter className='flex justify-center'>
-                            <div className='flex items-center'>Winner: <div className='font-bold ml-2'>Candidate 1</div></div>
-                        </CardFooter>
-                    </Card>
-
+                <div className="flex flex-wrap justify-start items-stretch gap-10 mt-10">
+                    {fetchingPastElections && <div className='mt-20 flex justify-center w-[100%] text-xl'>Fetching past elections...</div>}
+                    {
+                        !fetchingPastElections && (pastElections.length > 0 ? pastElections.map((election: any) => {
+                            return <PastElectionsCard key={election.electionId} election={election} candidates={candidates} />
+                        }) : <div className='mt-20 flex justify-center w-[100%] text-xl'>No past elections Yet</div>)
+                    }
                 </div>
             </div>
         </>
@@ -187,3 +224,6 @@ function Home() {
 }
 
 export default Home
+
+
+
