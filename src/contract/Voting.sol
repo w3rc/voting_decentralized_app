@@ -5,46 +5,48 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract Voting is ReentrancyGuard {
     struct Candidate {
-        uint id;
+        uint64 id;
         string name;
-        uint voteCount;
+        uint64 voteCount;
     }
 
     struct Election {
-        uint id;
+        uint64 id;
         string name;
-        mapping(uint => Candidate) candidates;
-        uint candidatesCount;
+        address owner;
+        mapping(uint64 => Candidate) candidates;
+        uint64 candidatesCount;
     }
 
-    mapping(string => uint) public electionNamesToIds;
-    mapping(uint => Election) public elections;
+    mapping(string => uint64) public electionNamesToIds;
+    mapping(uint64 => Election) public elections;
     mapping(address => bool) public voters;
-    uint public electionsCount;    
+    uint64 public electionsCount;    
 
     event votedEvent (
-        uint indexed _electionId,
-        uint indexed _candidateId,
+        uint64 indexed _electionId,
+        uint64 indexed _candidateId,
         address _voter
     );
 
     event electionCreatedEvent (
-        uint indexed _electionId,
-        string _electionName
+        uint64 indexed _electionId,
+        string _electionName,
+        address _owner
     );
 
     event candidateAddedEvent (
-        uint indexed _electionId,
-        uint indexed _candidateId,
+        uint64 indexed _electionId,
+        uint64 indexed _candidateId,
         string _candidateName
     );
 
     event electionEndedEvent (
-        uint indexed _electionId,
-        uint indexed _winnerId,
+        uint64 indexed _electionId,
+        uint64 indexed _winnerId,
         string _electionName,
         string _winnerName,
-        uint _voteCount
+        uint64 _voteCount
     );
 
     function createElection(string memory _name) public nonReentrant() {
@@ -52,27 +54,18 @@ contract Voting is ReentrancyGuard {
         Election storage election = elections[electionsCount];
         election.id = electionsCount;
         election.name = _name;
+        election.owner = msg.sender;
 
         electionNamesToIds[_name] = electionsCount;
 
-        emit electionCreatedEvent(electionsCount, _name);
+        emit electionCreatedEvent(electionsCount, _name, msg.sender);
     }
 
-    function createElectionWithCandidates(string memory _name, string[] memory _candidates) public nonReentrant() {
-        electionsCount++;
-        Election storage election = elections[electionsCount];
-        election.id = electionsCount;
-        election.name = _name;
-
-        for (uint i = 0; i < _candidates.length; i++) {
-            addCandidate(electionsCount, _candidates[i]);
-        }
-
-        emit electionCreatedEvent(electionsCount, _name);
-    }
-
-    function addCandidate(uint _electionId, string memory _name) public nonReentrant() {
+    function addCandidate(uint64 _electionId, string memory _name) public nonReentrant() {
         Election storage election = elections[_electionId];
+
+        require(msg.sender == election.owner, "Only the election creator can add candidates.");
+
         election.candidatesCount ++;
         election.candidates[election.candidatesCount] = Candidate(election.candidatesCount, _name, 0);
 
@@ -80,16 +73,17 @@ contract Voting is ReentrancyGuard {
     }
 
     function addCandidateByElectionName(string memory _electionName, string memory _candidateName) public {
-        uint electionId = electionNamesToIds[_electionName];
+        uint64 electionId = electionNamesToIds[_electionName];
 
         require(electionId != 0, "Election does not exist");
+        require(msg.sender == elections[electionId].owner, "Only the election creator can add candidates.");
 
         addCandidate(electionId, _candidateName);
     }
 
-    function vote (uint _electionId, uint _candidateId) public nonReentrant() {
+    function vote (uint64 _electionId, uint64 _candidateId) public nonReentrant() {
         Election storage election = elections[_electionId];
-        // require(!voters[msg.sender], "You have already voted.");
+        require(!voters[msg.sender], "You have already voted.");
         require(_candidateId > 0 && _candidateId <= election.candidatesCount, "Not a valid candidate.");
 
         voters[msg.sender] = true;
@@ -98,12 +92,14 @@ contract Voting is ReentrancyGuard {
         emit votedEvent(_electionId, _candidateId, msg.sender);
     }
 
-    function endElection(uint _electionId) public nonReentrant() {
+    function endElection(uint64 _electionId) public nonReentrant() {
         Election storage election = elections[_electionId];
-        uint maxVoteCount = 0;
-        uint winnerId = 0;
+        require(msg.sender == election.owner, "Only the election creator can end this election.");
 
-        for (uint i = 1; i <= election.candidatesCount; i++) {
+        uint64 maxVoteCount = 0;
+        uint64 winnerId = 0;
+
+        for (uint64 i = 1; i <= election.candidatesCount; i++) {
             if (election.candidates[i].voteCount > maxVoteCount) {
                 maxVoteCount = election.candidates[i].voteCount;
                 winnerId = i;
