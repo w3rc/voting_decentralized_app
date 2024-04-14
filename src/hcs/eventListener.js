@@ -14,10 +14,10 @@ export const getEventsFromMirror = async (contractId, abi, electionCreatedTopicI
 	const url = `https://testnet.mirrornode.hedera.com/api/v1/contracts/${contractId.toString()}/results/logs?order=asc&timestamp=gte:${lastCheckedTimestamp}`;
 	lastCheckedTimestamp = Math.floor(Date.now() / 1000);
 
-	const electionCreatedEventSignature = web3.utils.sha3('electionCreatedEvent(uint256,string,address)');
-	const candidateAddedEventSignature = web3.utils.sha3('candidateAddedEvent(uint256,uint256,string)');
-	const votedEventSignature = web3.utils.sha3('votedEvent(uint256,uint256,address)');
-	const electionEndedEventSignature = web3.utils.sha3('electionEndedEvent(uint256,uint256,string,string,uint256)');
+	const electionCreatedEventSignature = web3.utils.sha3('electionCreatedEvent(uint64,string,address)');
+	const candidateAddedEventSignature = web3.utils.sha3('candidateAddedEvent(uint64,uint64,string)');
+	const votedEventSignature = web3.utils.sha3('votedEvent(uint64,uint64,address)');
+	const electionEndedEventSignature = web3.utils.sha3('electionEndedEvent(uint64,uint64,string,string,uint64)');
 
 	axios
 		.get(url)
