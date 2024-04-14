@@ -45,6 +45,6 @@ deploy-contract:
 
 hcs-start:; node src/hcs/index.js
 
-client-start:; cd client && bun run dev
+client-start:; cd client && bun run dev --host
 
 discord-bot-start:; cd discord_bot && node index.js
