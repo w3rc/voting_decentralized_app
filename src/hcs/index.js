@@ -61,6 +61,6 @@ const main = async () => {
 
     setInterval(() => {
         getEventsFromMirror(process.env.CONTRACT_ADDRESS, abi, electionCreatedTopicId, candidateAddedTopicId, votedTopicId, electionEndedTopicId, client);
-    }, 10000); // 10000 milliseconds = 10 seconds}
+    }, 4000);
 }
 main();

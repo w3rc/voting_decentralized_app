@@ -4,6 +4,7 @@ pragma solidity ^0.8.25;
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract Voting is ReentrancyGuard {
+    error Voting__ElectionWithSameNameAlreadyExists(string name);
     error Voting__ElectionDoesNotExist();
     error Voting__OnlyElectionCreatorCanAddCandidates();
     error Voting__OnlyElectionCreatorCanEndElection();
@@ -58,6 +59,10 @@ contract Voting is ReentrancyGuard {
     function createElection(
         string memory _name
     ) public nonReentrant returns (uint64) {
+        if (electionNamesToIds[_name] != 0) {
+            revert Voting__ElectionWithSameNameAlreadyExists(_name);
+        }
+
         electionsCount++;
         Election storage election = elections[electionsCount];
         election.id = electionsCount;

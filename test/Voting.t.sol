@@ -20,37 +20,13 @@ contract VotingTest is Test {
         assertEq(voting.electionsCount(), 1);
     }
 
-    function testCreateElectionWithSameName() external {
-        voting.createElection("Election 1");
-        voting.createElection("Election 1");
-        assertEq(voting.electionsCount(), 2);
-    }
-
     function testCreateElectionWithDifferentName() external {
         voting.createElection("Election 1");
         voting.createElection("Election 2");
         assertEq(voting.electionsCount(), 2);
     }
 
-    function testCreateElectionWithSameNameAndDifferentOwner() external {
-        voting.createElection("Election 1");
-        voting.createElection("Election 1");
-        assertEq(voting.electionsCount(), 2);
-    }
-
     function testCreateElectionWithDifferentNameAndDifferentOwner() external {
-        voting.createElection("Election 1");
-        voting.createElection("Election 2");
-        assertEq(voting.electionsCount(), 2);
-    }
-
-    function testCreateElectionWithSameNameAndSameOwner() external {
-        voting.createElection("Election 1");
-        voting.createElection("Election 1");
-        assertEq(voting.electionsCount(), 2);
-    }
-
-    function testCreateElectionWithDifferentNameAndSameOwner() external {
         voting.createElection("Election 1");
         voting.createElection("Election 2");
         assertEq(voting.electionsCount(), 2);
